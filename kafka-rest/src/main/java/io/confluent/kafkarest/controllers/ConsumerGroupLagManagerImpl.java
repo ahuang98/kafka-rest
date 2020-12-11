@@ -18,6 +18,7 @@ package io.confluent.kafkarest.controllers;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.entities.ConsumerGroupLag;
+import io.confluent.kafkarest.entities.v3.ConsumerGroupLagData;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
@@ -25,15 +26,15 @@ import org.apache.kafka.common.IsolationLevel;
 
 final class ConsumerGroupLagManagerImpl implements ConsumerGroupLagManager {
 
-//  private final Admin adminClient;
-//  private final ConsumerGroupManager consumerGroupManager;
+  //  private final Admin adminClient;
+  //  private final ConsumerGroupManager consumerGroupManager;
   private final ConsumerOffsetsDao consumerOffsetsDao;
 
   @Inject
   ConsumerGroupLagManagerImpl(
       ConsumerOffsetsDao consumerOffsetsDao) {
-//    this.adminClient = requireNonNull(adminClient);
-//    this.consumerGroupManager = requireNonNull(consumerGroupManager);
+    //  this.adminClient = requireNonNull(adminClient);
+    //  this.consumerGroupManager = requireNonNull(consumerGroupManager);
     this.consumerOffsetsDao = requireNonNull(consumerOffsetsDao);
   }
 
@@ -43,8 +44,9 @@ final class ConsumerGroupLagManagerImpl implements ConsumerGroupLagManager {
       String consumerGroupId
   ) {
     try {
-      ConsumerGroupOffsets cgo = consumerOffsetsDao.getConsumerGroupOffsets(consumerGroupId, IsolationLevel.READ_COMMITTED);
-      return CompletableFuture.completedFuture(Optional.ofNullable(ConsumerGroupLag.fromConsumerGroupOffsets(clusterId, cgo)));
+      CompletableFuture<ConsumerGroupLagData.Builder> result =
+          consumerOffsetsDao.getConsumerGroupOffsets(consumerGroupId, IsolationLevel.READ_COMMITTED);
+      // todo: finish setting attributes on 'result', build, then return
     } catch (ArithmeticException e) {
       // log.warn("lag exceeds Integer.MAX_VALUE", e);
     } catch (Exception e) {
@@ -53,3 +55,7 @@ final class ConsumerGroupLagManagerImpl implements ConsumerGroupLagManager {
     return CompletableFuture.completedFuture(Optional.empty());
   }
 }
+
+//return result.thenCombine("dummy_relationship", (ConsumerGroupLagData.Builder lagBuilder, String relationship) -> {
+//    return lagBuilder.setMaxLagInstanceId(relationship);
+//    }).thenApply(ConsumerGroupLag.Builder::build);
