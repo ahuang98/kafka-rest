@@ -76,12 +76,12 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
             createPartition("topic-1", 0),
             createPartition("topic-1", 1),
             createPartition("topic-1", 2),
-            createPartition("topic-1", 0),
-            createPartition("topic-1", 1),
-            createPartition("topic-1", 2),
-            createPartition("topic-1", 0),
-            createPartition("topic-1", 1),
-            createPartition("topic-1", 2)
+            createPartition("topic-2", 0),
+            createPartition("topic-2", 1),
+            createPartition("topic-2", 2),
+            createPartition("topic-3", 0),
+            createPartition("topic-3", 1),
+            createPartition("topic-3", 2)
         };
 
     final Consumer[] consumers =
