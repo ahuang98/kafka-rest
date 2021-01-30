@@ -15,10 +15,14 @@
 
 package io.confluent.kafkarest.integration.v3;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
+import io.confluent.kafkarest.TestUtils;
+import io.confluent.kafkarest.entities.Consumer;
 import io.confluent.kafkarest.entities.ConsumerGroup.State;
+import io.confluent.kafkarest.entities.Partition;
 import io.confluent.kafkarest.entities.v3.ConsumerGroupData;
 import io.confluent.kafkarest.entities.v3.ConsumerGroupDataList;
 import io.confluent.kafkarest.entities.v3.GetConsumerGroupResponse;
@@ -29,6 +33,8 @@ import io.confluent.kafkarest.entities.v3.ResourceCollection;
 import io.confluent.kafkarest.integration.ClusterTestHarness;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -55,16 +61,69 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     createTopic("topic-1", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-2", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-3", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
-    KafkaConsumer<?, ?> consumer1 = createConsumer("consumer-group-1", "client-1");
-    KafkaConsumer<?, ?> consumer2 = createConsumer("consumer-group-1", "client-2");
-    KafkaConsumer<?, ?> consumer3 = createConsumer("consumer-group-1", "client-3");
-    consumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer1.poll(Duration.ofSeconds(1));
-    consumer2.poll(Duration.ofSeconds(1));
-    consumer3.poll(Duration.ofSeconds(1));
+    KafkaConsumer<?, ?> kafkaConsumer1 = createConsumer("consumer-group-1", "client-1");
+    KafkaConsumer<?, ?> kafkaConsumer2 = createConsumer("consumer-group-1", "client-2");
+    KafkaConsumer<?, ?> kafkaConsumer3 = createConsumer("consumer-group-1", "client-3");
+    kafkaConsumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
 
+    final Partition[] partitions =
+        {
+            createPartition("topic-1", 0),
+            createPartition("topic-1", 1),
+            createPartition("topic-1", 2),
+            createPartition("topic-1", 0),
+            createPartition("topic-1", 1),
+            createPartition("topic-1", 2),
+            createPartition("topic-1", 0),
+            createPartition("topic-1", 1),
+            createPartition("topic-1", 2)
+        };
+
+    final Consumer[] consumers =
+        {
+            Consumer.builder()
+                .setClusterId(clusterId)
+                .setConsumerGroupId("consumer-group-1")
+                .setConsumerId(kafkaConsumer1.groupMetadata().memberId())
+                .setInstanceId(kafkaConsumer1.groupMetadata().groupInstanceId().orElse(""))
+                .setClientId("client-1")
+                .setHost("no_idea")
+                .setAssignedPartitions(
+                    Arrays.asList(partitions))
+                .build(),
+            Consumer.builder()
+                .setClusterId(clusterId)
+                .setConsumerGroupId("consumer-group-1")
+                .setConsumerId(kafkaConsumer2.groupMetadata().memberId())
+                .setInstanceId(kafkaConsumer2.groupMetadata().groupInstanceId().orElse(""))
+                .setClientId("client-2")
+                .setHost("no_idea")
+                .setAssignedPartitions(
+                    Arrays.asList(partitions))
+                .build(),
+            Consumer.builder()
+                .setClusterId(clusterId)
+                .setConsumerGroupId("consumer-group-1")
+                .setConsumerId(kafkaConsumer3.groupMetadata().memberId())
+                .setInstanceId(kafkaConsumer3.groupMetadata().groupInstanceId().orElse(""))
+                .setClientId("client-3")
+                .setHost("no_idea")
+                .setAssignedPartitions(
+                    Arrays.asList(partitions))
+                .build(),
+        };
+
+    Map<Partition, Consumer> partitionAssignment = new HashMap<>();
+    for (Partition partition : partitions) {
+      for (Consumer consumer : consumers) {
+        partitionAssignment.put(partition, consumer);
+      }
+    }
     ListConsumerGroupsResponse expected =
         ListConsumerGroupsResponse.create(
             ConsumerGroupDataList.builder()
@@ -88,6 +147,7 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
                             .setConsumerGroupId("consumer-group-1")
                             .setSimple(false)
                             .setPartitionAssignor("")
+                            .setPartitionAssignment(partitionAssignment)
                             .setState(State.PREPARING_REBALANCE)
                             .setCoordinator(
                                 Relationship.create(
@@ -112,15 +172,15 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     createTopic("topic-1", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-2", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-3", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
-    KafkaConsumer<?, ?> consumer1 = createConsumer("consumer-group-1", "client-1");
-    KafkaConsumer<?, ?> consumer2 = createConsumer("consumer-group-1", "client-2");
-    KafkaConsumer<?, ?> consumer3 = createConsumer("consumer-group-1", "client-3");
-    consumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer1.poll(Duration.ofSeconds(1));
-    consumer2.poll(Duration.ofSeconds(1));
-    consumer3.poll(Duration.ofSeconds(1));
+    KafkaConsumer<?, ?> kafkaConsumer1 = createConsumer("consumer-group-1", "client-1");
+    KafkaConsumer<?, ?> kafkaConsumer2 = createConsumer("consumer-group-1", "client-2");
+    KafkaConsumer<?, ?> kafkaConsumer3 = createConsumer("consumer-group-1", "client-3");
+    kafkaConsumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
 
     Response response =
         request("/v3/clusters/foobar/consumer-groups")
@@ -137,15 +197,15 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     createTopic("topic-1", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-2", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-3", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
-    KafkaConsumer<?, ?> consumer1 = createConsumer("consumer-group-1", "client-1");
-    KafkaConsumer<?, ?> consumer2 = createConsumer("consumer-group-1", "client-2");
-    KafkaConsumer<?, ?> consumer3 = createConsumer("consumer-group-1", "client-3");
-    consumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer1.poll(Duration.ofSeconds(1));
-    consumer2.poll(Duration.ofSeconds(1));
-    consumer3.poll(Duration.ofSeconds(1));
+    KafkaConsumer<?, ?> kafkaConsumer1 = createConsumer("consumer-group-1", "client-1");
+    KafkaConsumer<?, ?> kafkaConsumer2 = createConsumer("consumer-group-1", "client-2");
+    KafkaConsumer<?, ?> kafkaConsumer3 = createConsumer("consumer-group-1", "client-3");
+    kafkaConsumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
 
     GetConsumerGroupResponse expected =
         GetConsumerGroupResponse.create(
@@ -186,15 +246,15 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     createTopic("topic-1", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-2", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-3", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
-    KafkaConsumer<?, ?> consumer1 = createConsumer("consumer-group-1", "client-1");
-    KafkaConsumer<?, ?> consumer2 = createConsumer("consumer-group-1", "client-2");
-    KafkaConsumer<?, ?> consumer3 = createConsumer("consumer-group-1", "client-3");
-    consumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer1.poll(Duration.ofSeconds(1));
-    consumer2.poll(Duration.ofSeconds(1));
-    consumer3.poll(Duration.ofSeconds(1));
+    KafkaConsumer<?, ?> kafkaConsumer1 = createConsumer("consumer-group-1", "client-1");
+    KafkaConsumer<?, ?> kafkaConsumer2 = createConsumer("consumer-group-1", "client-2");
+    KafkaConsumer<?, ?> kafkaConsumer3 = createConsumer("consumer-group-1", "client-3");
+    kafkaConsumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
 
     Response response =
         request("/v3/clusters/foobar/consumer-groups/consumer-group-1")
@@ -209,15 +269,15 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     createTopic("topic-1", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-2", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
     createTopic("topic-3", /* numPartitions= */ 3, /* replicationFactor= */ (short) 1);
-    KafkaConsumer<?, ?> consumer1 = createConsumer("consumer-group-1", "client-1");
-    KafkaConsumer<?, ?> consumer2 = createConsumer("consumer-group-1", "client-2");
-    KafkaConsumer<?, ?> consumer3 = createConsumer("consumer-group-1", "client-3");
-    consumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
-    consumer1.poll(Duration.ofSeconds(1));
-    consumer2.poll(Duration.ofSeconds(1));
-    consumer3.poll(Duration.ofSeconds(1));
+    KafkaConsumer<?, ?> kafkaConsumer1 = createConsumer("consumer-group-1", "client-1");
+    KafkaConsumer<?, ?> kafkaConsumer2 = createConsumer("consumer-group-1", "client-2");
+    KafkaConsumer<?, ?> kafkaConsumer3 = createConsumer("consumer-group-1", "client-3");
+    kafkaConsumer1.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer2.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer3.subscribe(Arrays.asList("topic-1", "topic-2", "topic-3"));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
 
     Response response =
         request("/v3/clusters/" + clusterId + "/consumer-groups/foobar")
@@ -232,5 +292,13 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
     properties.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
     return new KafkaConsumer<>(properties, new BytesDeserializer(), new BytesDeserializer());
+  }
+
+  private Partition createPartition(String topicName, int partitionId) {
+    return Partition.create(
+        getClusterId(),
+        topicName,
+        partitionId,
+        /* replicas= */ emptyList());
   }
 }

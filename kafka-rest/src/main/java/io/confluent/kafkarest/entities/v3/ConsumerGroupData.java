@@ -17,9 +17,15 @@ package io.confluent.kafkarest.entities.v3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.auto.value.AutoValue;
+import com.google.common.collect.ImmutableMap;
+import io.confluent.kafkarest.PartitionDeserializer;
+import io.confluent.kafkarest.entities.Consumer;
 import io.confluent.kafkarest.entities.ConsumerGroup;
 import io.confluent.kafkarest.entities.ConsumerGroup.State;
+import io.confluent.kafkarest.entities.Partition;
+import java.util.Map;
 
 @AutoValue
 public abstract class ConsumerGroupData extends Resource {
@@ -38,6 +44,10 @@ public abstract class ConsumerGroupData extends Resource {
 
   @JsonProperty("partition_assignor")
   public abstract String getPartitionAssignor();
+
+  @JsonProperty("partition_assignment")
+  @JsonDeserialize(keyUsing = PartitionDeserializer.class)
+  public abstract ImmutableMap<Partition, Consumer> getPartitionAssignment();
 
   @JsonProperty("state")
   public abstract State getState();
@@ -58,6 +68,7 @@ public abstract class ConsumerGroupData extends Resource {
         .setConsumerGroupId(consumerGroup.getConsumerGroupId())
         .setSimple(consumerGroup.isSimple())
         .setPartitionAssignor(consumerGroup.getPartitionAssignor())
+        .setPartitionAssignment(consumerGroup.getPartitionAssignment())
         .setState(consumerGroup.getState());
   }
 
@@ -69,6 +80,7 @@ public abstract class ConsumerGroupData extends Resource {
       @JsonProperty("consumer_group_id") String consumerGroupId,
       @JsonProperty("is_simple") boolean isSimple,
       @JsonProperty("partition_assignor") String partitionAssignor,
+      @JsonProperty("partition_assignment") @JsonDeserialize(keyUsing = PartitionDeserializer.class) Map<Partition, Consumer> partitionAssignment,
       @JsonProperty("state") State state,
       @JsonProperty("coordinator") Relationship coordinator,
       @JsonProperty("consumers") Relationship consumers
@@ -80,6 +92,7 @@ public abstract class ConsumerGroupData extends Resource {
         .setConsumerGroupId(consumerGroupId)
         .setSimple(isSimple)
         .setPartitionAssignor(partitionAssignor)
+        .setPartitionAssignment(partitionAssignment)
         .setState(state)
         .setCoordinator(coordinator)
         .setConsumers(consumers)
@@ -99,6 +112,8 @@ public abstract class ConsumerGroupData extends Resource {
     public abstract Builder setSimple(boolean isSimple);
 
     public abstract Builder setPartitionAssignor(String partitionAssignor);
+
+    public abstract Builder setPartitionAssignment(Map<Partition, Consumer> partitionAssignment);
 
     public abstract Builder setState(State state);
 

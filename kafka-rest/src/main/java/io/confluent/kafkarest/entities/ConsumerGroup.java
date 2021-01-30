@@ -17,7 +17,10 @@ package io.confluent.kafkarest.entities;
 
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.common.ConsumerGroupState;
@@ -36,6 +39,8 @@ public abstract class ConsumerGroup {
 
   public abstract String getPartitionAssignor();
 
+  public abstract ImmutableMap<Partition, Consumer> getPartitionAssignment();
+
   public abstract State getState();
 
   public abstract Broker getCoordinator();
@@ -48,6 +53,13 @@ public abstract class ConsumerGroup {
 
   public static ConsumerGroup fromConsumerGroupDescription(
       String clusterId, ConsumerGroupDescription description) {
+    List<Consumer> consumers =
+        description.members()
+            .stream()
+            .map(
+                consumer ->
+                    Consumer.fromMemberDescription(clusterId, description.groupId(), consumer))
+            .collect(Collectors.toList());
     return builder()
         .setClusterId(clusterId)
         .setConsumerGroupId(description.groupId())
@@ -55,17 +67,19 @@ public abstract class ConsumerGroup {
         // I have only seen partitionAssignor="" in all my tests, no matter what I do.
         // TODO: Investigate how to actually get partition assignor.
         .setPartitionAssignor(description.partitionAssignor())
+        .setPartitionAssignment(
+            consumers.stream()
+                .collect(
+                    HashMap::new,
+                    (map, consumer) ->
+                        consumer.getAssignedPartitions()
+                            .forEach(partition -> map.put(partition, consumer)),
+                    Map::putAll))
         // I have only been able to see state=PREPARING_REBALANCE on all my tests.
         // TODO: Investigate how to get actual state of consumer group.
         .setState(State.fromConsumerGroupState(description.state()))
         .setCoordinator(Broker.fromNode(clusterId, description.coordinator()))
-        .setConsumers(
-            description.members()
-                .stream()
-                .map(
-                    consumer ->
-                        Consumer.fromMemberDescription(clusterId, description.groupId(), consumer))
-                .collect(Collectors.toList()))
+        .setConsumers(consumers)
         .build();
   }
 
@@ -88,6 +102,8 @@ public abstract class ConsumerGroup {
     public abstract Builder setCoordinator(Broker coordinator);
 
     public abstract Builder setConsumers(List<Consumer> consumers);
+
+    public abstract Builder setPartitionAssignment(Map<Partition, Consumer> partitionAssignment);
 
     public abstract ConsumerGroup build();
   }
