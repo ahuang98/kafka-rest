@@ -70,6 +70,12 @@ public class ConsumerGroupsResourceIntegrationTest extends ClusterTestHarness {
     kafkaConsumer1.poll(Duration.ofSeconds(1));
     kafkaConsumer2.poll(Duration.ofSeconds(1));
     kafkaConsumer3.poll(Duration.ofSeconds(1));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
+    kafkaConsumer1.poll(Duration.ofSeconds(1));
+    kafkaConsumer2.poll(Duration.ofSeconds(1));
+    kafkaConsumer3.poll(Duration.ofSeconds(1));
 
     final Partition[] partitions =
         {
